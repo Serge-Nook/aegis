@@ -60,7 +60,7 @@ func newBoardWidget(u *ui, v *core.BoardView) fyne.CanvasObject {
 	b.ghost = container.NewStack()
 	b.ghost.Hide()
 	b.overlay = container.NewWithoutLayout(b.indicator, b.ghost)
-	b.root = container.NewStack(container.NewScroll(row), b.overlay)
+	b.root = container.NewStack(container.NewHScroll(row), b.overlay)
 	return b.root
 }
 
@@ -116,7 +116,25 @@ func (b *boardView) column(cv *colView, tasks []core.TaskCard) fyne.CanvasObject
 	bg := canvas.NewRectangle(themeColor(theme.ColorNameInputBackground))
 	bg.CornerRadius = 8
 	body := container.NewBorder(container.NewPadded(header), nil, nil, nil, container.NewVScroll(container.NewPadded(cards)))
-	return container.NewGridWrap(fyne.NewSize(colWidth, 10000), container.NewStack(bg, body))
+	return container.New(fixedWidth(colWidth), container.NewStack(bg, body))
+}
+
+// fixedWidth lays out its objects with a fixed width and the full available height.
+type fixedWidth float32
+
+func (w fixedWidth) MinSize(objs []fyne.CanvasObject) fyne.Size {
+	h := float32(0)
+	for _, o := range objs {
+		h = max(h, o.MinSize().Height)
+	}
+	return fyne.NewSize(float32(w), h)
+}
+
+func (w fixedWidth) Layout(objs []fyne.CanvasObject, size fyne.Size) {
+	for _, o := range objs {
+		o.Move(fyne.NewPos(0, 0))
+		o.Resize(fyne.NewSize(float32(w), size.Height))
+	}
 }
 
 type cardWidget struct {
@@ -224,12 +242,7 @@ func tagChip(tg core.Tag) fyne.CanvasObject {
 }
 
 func (c *cardWidget) CreateRenderer() fyne.WidgetRenderer {
-	return widget.NewSimpleRenderer(container.NewGridWrap(fyne.NewSize(cardWidth, 0), c.content()))
-}
-
-func (c *cardWidget) MinSize() fyne.Size {
-	m := c.BaseWidget.MinSize()
-	return fyne.NewSize(cardWidth, m.Height)
+	return widget.NewSimpleRenderer(container.New(fixedWidth(cardWidth), c.content()))
 }
 
 func (c *cardWidget) Tapped(*fyne.PointEvent) { c.b.u.openTask(c.t.ID) }
@@ -269,7 +282,7 @@ func (c *cardWidget) Dragged(e *fyne.DragEvent) {
 	if !c.dragging {
 		c.dragging = true
 		c.grab = e.AbsolutePosition.Subtract(d.AbsolutePositionForObject(c))
-		b.ghost.Objects = []fyne.CanvasObject{container.NewGridWrap(fyne.NewSize(cardWidth, c.Size().Height), c.content())}
+		b.ghost.Objects = []fyne.CanvasObject{c.content()}
 		b.ghost.Resize(fyne.NewSize(cardWidth, c.Size().Height))
 		b.ghost.Show()
 	}

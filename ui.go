@@ -395,12 +395,16 @@ func (u *ui) refreshAll() {
 			}
 			u.boardList.Refresh()
 			u.mu.Lock()
+			sel := -1
 			for i, b := range u.boards {
 				if b.ID == u.boardID {
-					u.boardList.Select(i)
+					sel = i
 				}
 			}
 			u.mu.Unlock()
+			if sel >= 0 {
+				u.boardList.Select(sel)
+			}
 			u.reloadBoard()
 		})
 	}()
