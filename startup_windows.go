@@ -79,6 +79,11 @@ func platformStartup(args []string) []string {
 		rest = append(rest, a)
 	}
 
+	for _, a := range rest {
+		if strings.TrimLeft(a, "-") == "serve" || strings.TrimLeft(a, "-") == "version" {
+			return rest // no window, no OpenGL needed
+		}
+	}
 	if exists(filepath.Join(exeDir(), "opengl32.dll")) {
 		mode = "system" // this is the Mesa copy: opengl32.dll next to the exe is used
 	}
