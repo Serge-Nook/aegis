@@ -33,21 +33,31 @@ var notifyText = map[string]string{
 // notify creates in-app notifications for users (except the actor) and queues e-mails.
 func notify(d dbx, ob *outbox, actorID int64, typ string, taskID int64, text string, users []int64) error {
 	now := nowMs()
+	var boardID int64
+	if err := d.row("SELECT board_id FROM tasks WHERE id = ?", taskID).Scan(&boardID); err != nil {
+		return notFound(err)
+	}
+	b, err := loadBoard(d, boardID)
+	if err != nil {
+		return err
+	}
 	for _, uid := range uniq(users) {
 		if uid == actorID {
 			continue
 		}
-		var email string
-		var active int
-		if err := d.row("SELECT email, active FROM users WHERE id = ?", uid).Scan(&email, &active); err != nil {
-			if err == sql.ErrNoRows {
-				continue
-			}
-			return err
-		}
-		if active == 0 {
+		// Only users who may open the task learn about it (e.g. an outsider
+		// @mentioned on a department board gets nothing).
+		a, err := (&Session{uid: uid}).me(d)
+		if CodeOf(err) == CodeAuth {
 			continue
 		}
+		if err != nil {
+			return err
+		}
+		if !a.canSeeBoard(b) {
+			continue
+		}
+		email := a.Email
 		if _, err := d.exec("INSERT INTO notifications (user_id, type, actor_id, task_id, text, is_read, created_at) VALUES (?, ?, ?, ?, ?, 0, ?)",
 			uid, typ, actorID, taskID, text, now); err != nil {
 			return err

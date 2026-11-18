@@ -97,6 +97,10 @@ func workflow(t *testing.T, s *Service) {
 	if _, err := os_.AddComment(task, "можно?"); CodeOf(err) != CodeForbidden {
 		t.Fatalf("observer commented: %v", err)
 	}
+	must(es.AddComment(task, "@obs не видит доску отдела"))
+	if n := must(os_.Notifications(true, 0)); len(n) != 0 {
+		t.Fatalf("outsider notified about a department task: %+v", n)
+	}
 	cid := must(es.AddComment(task, "Готово, @head проверь"))
 	if n := must(hs.Notifications(true, 0)); len(n) == 0 || n[0].Type != NotifyMention {
 		t.Fatalf("mention: %+v", n)
@@ -109,7 +113,7 @@ func workflow(t *testing.T, s *Service) {
 		t.Fatal(err)
 	}
 	td := must(hs.Task(task))
-	if td.Task.CompletedAt == 0 || len(td.Comments) != 1 || len(td.Attachments) != 1 || len(td.Subtasks) != 1 || len(td.History) < 3 {
+	if td.Task.CompletedAt == 0 || len(td.Comments) != 2 || len(td.Attachments) != 1 || len(td.Subtasks) != 1 || len(td.History) < 3 {
 		t.Fatalf("detail: completed=%d comments=%d att=%d sub=%d hist=%d", td.Task.CompletedAt, len(td.Comments), len(td.Attachments), len(td.Subtasks), len(td.History))
 	}
 	f := AnyFilter()
