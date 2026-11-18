@@ -254,7 +254,12 @@ func (s *Server) loginFailed(key string) {
 	a := s.fails[key]
 	if a == nil {
 		if len(s.fails) > 10000 {
-			clear(s.fails)
+			now := time.Now()
+			for k, x := range s.fails {
+				if !now.Before(x.until) {
+					delete(s.fails, k)
+				}
+			}
 		}
 		a = &attempts{}
 		s.fails[key] = a
