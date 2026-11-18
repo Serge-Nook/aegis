@@ -272,6 +272,10 @@ func (u *ui) buildMenu() {
 			fyne.NewMenuItem(T("Резервная копия…"), u.backup),
 			fyne.NewMenuItem(T("Восстановить из копии…"), u.restore))
 	}
+	if items := u.appImageMenuItems(); len(items) > 0 {
+		file.Items = append(file.Items, fyne.NewMenuItemSeparator())
+		file.Items = append(file.Items, items...)
+	}
 	board := fyne.NewMenu(T("Доска"),
 		fyne.NewMenuItem(T("Новая задача…"), func() { u.newTask(0) }),
 		fyne.NewMenuItem(T("Обновить"), u.refreshAll))

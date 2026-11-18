@@ -342,4 +342,10 @@ var dict = map[string][2]string{
 	"— любой тег —":                  {"— any tag —", "— 任意标签 —"},
 	"— не назначен —":                {"— not assigned —", "— 未指定 —"},
 	"— нет —":                        {"— none —", "— 无 —"},
+	"Удалить из системы…":            {"Uninstall from system…", "从系统中卸载…"},
+	"Удалить из системы":             {"Uninstall from system", "从系统中卸载"},
+	"Удалить ярлык «Эгиды» из меню приложений и копию программы из ~/Applications? Данные не удаляются.": {"Remove the Egida shortcut from the applications menu and the program copy from ~/Applications? Data is not deleted.", "从应用程序菜单中删除 Egida 快捷方式并从 ~/Applications 删除程序副本？数据不会被删除。"},
+	"Программа удалена из меню приложений.":                                                              {"The program has been removed from the applications menu.", "程序已从应用程序菜单中删除。"},
+	"Установить в систему": {"Install to system", "安装到系统"},
+	"Программа установлена: %s. Ярлык добавлен в меню приложений.": {"The program is installed: %s. A shortcut has been added to the applications menu.", "程序已安装：%s。快捷方式已添加到应用程序菜单。"},
 }

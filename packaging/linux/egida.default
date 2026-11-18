@@ -1,0 +1,5 @@
+# Options for the Egida server (systemctl enable --now egida).
+# SQLite:      --db /var/lib/egida/egida.db
+# PostgreSQL:  --pg "postgres://user:password@host:5432/egida?sslmode=disable"
+# First start with an empty database also needs: --admin login:password
+EGIDA_OPTS="--db /var/lib/egida/egida.db --listen :8080"

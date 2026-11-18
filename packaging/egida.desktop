@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Name=Эгида
+Name[ru]=Эгида
+Name[en]=Egida
+Name[zh]=Egida
+GenericName=Task management
+GenericName[ru]=Управление задачами отделов
+Comment=Departmental task and workflow management (kanban, deadlines, reports)
+Comment[ru]=Управление задачами и этапами работы отделов: канбан, сроки, отчёты
+Exec=egida
+Icon=egida
+Terminal=false
+Categories=Office;ProjectManagement;
+Keywords=kanban;tasks;задачи;канбан;
+StartupWMClass=egida

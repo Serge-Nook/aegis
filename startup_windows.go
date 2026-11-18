@@ -19,7 +19,7 @@ import (
 // On Windows a GUI-subsystem program has no console: when OpenGL 2.1 is
 // unavailable (no GPU driver, "Microsoft Basic Display Adapter", RDP, VM) Fyne
 // only logs the error and exits, so nothing appears on screen. Therefore:
-//   - the log goes to %LOCALAPPDATA%\Egida\egida.log;
+//   - the log goes to %APPDATA%\Egida\egida.log;
 //   - OpenGL 2.1 is checked in a child process (--gl-probe);
 //   - if it is missing, the program restarts itself from mesa\egida.exe,
 //     next to which lies the Mesa llvmpipe opengl32.dll (an app-local DLL
