@@ -16,6 +16,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/Serge-Nook/aegis/internal/core"
@@ -175,17 +176,15 @@ func (u *ui) showConnect() {
 	dbPath := widget.NewEntry()
 	dbPath.SetText(p.StringWithFallback("dbPath", filepath.Join(dataDir(), "egida.db")))
 	dbBrowse := widget.NewButton(T("Обзор…"), func() {
-		d := dialog.NewFileSave(func(w fyne.URIWriteCloser, err error) {
-			if err == nil && w != nil {
-				path := w.URI().Path()
-				w.Close()
-				if st, err := os.Stat(path); err == nil && st.Size() == 0 {
-					os.Remove(path)
-				}
-				dbPath.SetText(path)
+		// An open dialog never touches the file; a new database is created at the
+		// path typed into the field.
+		d := dialog.NewFileOpen(func(r fyne.URIReadCloser, err error) {
+			if err == nil && r != nil {
+				dbPath.SetText(r.URI().Path())
+				r.Close()
 			}
 		}, u.win)
-		d.SetFileName("egida.db")
+		d.SetFilter(storage.NewExtensionFileFilter([]string{".db", ".sqlite", ".sqlite3"}))
 		d.Show()
 	})
 	port := widget.NewEntry()
