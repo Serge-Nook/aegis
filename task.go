@@ -28,6 +28,9 @@ type taskWin struct {
 	win     fyne.Window
 	d       *core.TaskDetail
 	cols    []core.Column
+	// choices shown in the stage and responsible dropdowns at the last fill
+	colOpts  []core.Column
+	respOpts []core.User
 
 	dirty, filling bool
 	title          *widget.Entry
@@ -271,6 +274,7 @@ func (tw *taskWin) fill() {
 	}
 	tw.title.SetText(t.Title)
 	tw.desc.SetText(t.Description)
+	tw.colOpts = tw.cols
 	var names []string
 	for _, c := range tw.cols {
 		names = append(names, c.Name)
@@ -288,6 +292,7 @@ func (tw *taskWin) fill() {
 		tw.deadline.SetText("")
 	}
 	users := tw.respUsers()
+	tw.respOpts = users
 	opts := []string{T("— не назначен —")}
 	sel := 0
 	for i, x := range users {
@@ -498,11 +503,11 @@ func (tw *taskWin) save() {
 		in.Deadline = t.UnixMilli()
 	}
 	if i := tw.resp.SelectedIndex(); i > 0 {
-		in.ResponsibleID = tw.respUsers()[i-1].ID
+		in.ResponsibleID = tw.respOpts[i-1].ID
 	}
 	newCol := tw.colID
-	if i := tw.column.SelectedIndex(); i >= 0 && i < len(tw.cols) {
-		newCol = tw.cols[i].ID
+	if i := tw.column.SelectedIndex(); i >= 0 && i < len(tw.colOpts) {
+		newCol = tw.colOpts[i].ID
 	}
 	if tw.id == 0 {
 		in.ColumnID = newCol
