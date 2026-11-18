@@ -53,7 +53,7 @@ type errorReply struct {
 }
 
 type token struct {
-	uid  int64
+	uid   int64
 	seen  time.Time
 	stamp string
 }
