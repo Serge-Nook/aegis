@@ -1,5 +1,6 @@
 dist/
-build/
+/build/*.exe
+/build/*.syso
 *.AppImage
 *.deb
 *.exe
