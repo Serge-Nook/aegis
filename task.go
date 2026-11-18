@@ -228,12 +228,10 @@ func (tw *taskWin) reload() {
 		if err != nil {
 			return nil, err
 		}
-		if tw.cols == nil || tw.boardID != d.Task.BoardID {
-			f := core.AnyFilter()
-			f.Query = "#-1"
-			if v, err := u.ss.api.BoardView(d.Task.BoardID, f); err == nil {
-				tw.cols = v.Columns
-			}
+		f := core.AnyFilter()
+		f.Query = "#-1"
+		if v, err := u.ss.api.BoardView(d.Task.BoardID, f); err == nil {
+			tw.cols = v.Columns
 		}
 		return d, nil
 	}, func(d *core.TaskDetail, err error) {
@@ -289,7 +287,7 @@ func (tw *taskWin) fill() {
 	} else {
 		tw.deadline.SetText("")
 	}
-	users := tw.activeUsers()
+	users := tw.respUsers()
 	opts := []string{T("— не назначен —")}
 	sel := 0
 	for i, x := range users {
@@ -341,6 +339,29 @@ func (tw *taskWin) activeUsers() []core.User {
 	var out []core.User
 	for _, x := range u.users {
 		if x.Active {
+			out = append(out, x)
+		}
+	}
+	return out
+}
+
+// respUsers are the choices for the responsible user: active users plus the
+// current one even if disabled, so that saving does not drop him silently.
+func (tw *taskWin) respUsers() []core.User {
+	out := tw.activeUsers()
+	if tw.d == nil || tw.d.Task.ResponsibleID == 0 {
+		return out
+	}
+	for _, x := range out {
+		if x.ID == tw.d.Task.ResponsibleID {
+			return out
+		}
+	}
+	u := tw.u
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	for _, x := range u.users {
+		if x.ID == tw.d.Task.ResponsibleID {
 			out = append(out, x)
 		}
 	}
@@ -477,7 +498,7 @@ func (tw *taskWin) save() {
 		in.Deadline = t.UnixMilli()
 	}
 	if i := tw.resp.SelectedIndex(); i > 0 {
-		in.ResponsibleID = tw.activeUsers()[i-1].ID
+		in.ResponsibleID = tw.respUsers()[i-1].ID
 	}
 	newCol := tw.colID
 	if i := tw.column.SelectedIndex(); i >= 0 && i < len(tw.cols) {
@@ -702,8 +723,8 @@ func (tw *taskWin) attach() {
 		name := r.URI().Name()
 		tw.run(func() error { _, err := u.ss.api.AddAttachment(tw.id, name, data); return err })
 	}, tw.win)
-	d.Resize(fyne.NewSize(760, 520))
 	d.Show()
+	d.Resize(fyne.NewSize(760, 520))
 }
 
 var fieldNames = map[string]string{
