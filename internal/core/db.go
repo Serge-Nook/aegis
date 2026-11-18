@@ -187,6 +187,21 @@ func nullID(id int64) any {
 	return id
 }
 
+// snapshot runs fn in a transaction that sees one consistent state of the
+// database (SQLite WAL readers keep their snapshot; PostgreSQL needs REPEATABLE READ).
+func (s *Service) snapshot(fn func(d dbx) error) error {
+	var opts *sql.TxOptions
+	if s.pg {
+		opts = &sql.TxOptions{Isolation: sql.LevelRepeatableRead, ReadOnly: true}
+	}
+	t, err := s.db.BeginTx(context.Background(), opts)
+	if err != nil {
+		return err
+	}
+	defer t.Rollback()
+	return fn(dbx{q: t, pg: s.pg})
+}
+
 // tx0 is tx without the revision bump.
 func (s *Service) tx0(fn func(d dbx) error) error {
 	t, err := s.db.BeginTx(context.Background(), nil)

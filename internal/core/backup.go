@@ -40,8 +40,15 @@ func (ss *Session) Backup() ([]byte, error) {
 	return ss.s.dump()
 }
 
-func (s *Service) dump() ([]byte, error) {
-	d := s.dbx()
+func (s *Service) dump() (out []byte, err error) {
+	err = s.snapshot(func(d dbx) error {
+		out, err = s.dumpTx(d)
+		return err
+	})
+	return out, err
+}
+
+func (s *Service) dumpTx(d dbx) ([]byte, error) {
 	bf := backupFile{App: "aegis", Schema: SchemaVersion(), Created: nowMs(), Tables: map[string]backupTable{}}
 	for _, t := range tables {
 		rows, err := d.query("SELECT * FROM " + t)
