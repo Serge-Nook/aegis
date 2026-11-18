@@ -157,6 +157,11 @@ func (r *barRenderer) Layout(size fyne.Size) {
 }
 
 func (r *barRenderer) MinSize() fyne.Size           { return r.c.MinSize() }
-func (r *barRenderer) Refresh()                     { r.build(); r.Layout(r.c.Size()); canvas.Refresh(r.c) }
+func (r *barRenderer) Refresh() {
+	r.Layout(r.c.Size())
+	for _, o := range r.objs {
+		o.Refresh()
+	}
+}
 func (r *barRenderer) Objects() []fyne.CanvasObject { return r.objs }
 func (r *barRenderer) Destroy()                     {}
