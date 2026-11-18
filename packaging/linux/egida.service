@@ -1,0 +1,17 @@
+[Unit]
+Description=Egida server (HTTP API without GUI)
+Documentation=https://github.com/Serge-Nook/aegis
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+StateDirectory=egida
+EnvironmentFile=-/etc/default/egida
+ExecStart=/usr/bin/egida --serve $EGIDA_OPTS
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

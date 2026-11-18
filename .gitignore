@@ -1,0 +1,9 @@
+dist/
+/build/*.exe
+/build/*.syso
+*.AppImage
+*.deb
+*.exe
+/aegis
+/egida
+*.syso
