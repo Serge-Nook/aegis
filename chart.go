@@ -156,7 +156,7 @@ func (r *barRenderer) Layout(size fyne.Size) {
 	}
 }
 
-func (r *barRenderer) MinSize() fyne.Size           { return r.c.MinSize() }
+func (r *barRenderer) MinSize() fyne.Size { return r.c.MinSize() }
 func (r *barRenderer) Refresh() {
 	r.Layout(r.c.Size())
 	for _, o := range r.objs {
