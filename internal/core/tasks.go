@@ -646,7 +646,13 @@ func moveTaskTx(d dbx, ob *outbox, a *actor, b *Board, t *taskRow, columnID int6
 	if err != nil {
 		return err
 	}
-	ids = insertAt(ids, t.ID, pos)
+	idx := len(ids)
+	if pos >= 0 {
+		if err := d.row("SELECT COUNT(*) FROM tasks WHERE column_id = ? AND archived = 0 AND id <> ? AND pos < ?", columnID, t.ID, pos).Scan(&idx); err != nil {
+			return err
+		}
+	}
+	ids = insertAt(ids, t.ID, idx)
 	for i, tid := range ids {
 		if _, err := d.exec("UPDATE tasks SET pos = ? WHERE id = ?", i, tid); err != nil {
 			return err

@@ -32,6 +32,8 @@ type API interface {
 	Search(f Filter) ([]TaskCard, error)
 	Task(id int64) (*TaskDetail, error)
 	SaveTask(in TaskInput) (int64, error)
+	// MoveTask places the task before the tasks whose Pos is >= pos (a negative or
+	// very large pos appends it to the column).
 	MoveTask(id, columnID int64, pos int) error
 	CopyTask(id, boardID int64) (int64, error)
 	ArchiveTask(id int64, archived bool) error

@@ -326,12 +326,13 @@ func (c *cardWidget) DragEnd() {
 	p := 1 << 30
 	if idx < len(vis) {
 		p = vis[idx].t.Pos
-		if cv.col.ID == c.t.ColumnID && c.t.Pos < p {
-			p--
-		}
 	}
-	if cv.col.ID == c.t.ColumnID && p == c.t.Pos {
-		return
+	if cv.col.ID == c.t.ColumnID {
+		for i, x := range cv.cards {
+			if x == c && i == idx {
+				return
+			}
+		}
 	}
 	u := b.u
 	u.do(func() error { return u.ss.api.MoveTask(c.t.ID, cv.col.ID, p) })

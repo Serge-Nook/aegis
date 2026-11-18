@@ -159,3 +159,37 @@ func workflow(t *testing.T, s *Service) {
 		t.Fatal("empty audit log")
 	}
 }
+
+func TestMoveBeforeCard(t *testing.T) {
+	s := backends(t)["sqlite"]()
+	defer s.Close()
+	if err := s.CreateFirstAdmin("admin", "Админ", "secret1"); err != nil {
+		t.Fatal(err)
+	}
+	adm := must(s.Login("admin", "secret1"))
+	tpls := must(adm.Templates())
+	board := must(adm.SaveBoard(Board{Name: "Доска"}, tpls[0].ID))
+	cols := must(adm.BoardView(board, AnyFilter())).Columns
+	var ids []int64
+	for _, n := range []string{"A", "B", "C"} {
+		ids = append(ids, must(adm.SaveTask(TaskInput{BoardID: board, ColumnID: cols[0].ID, Title: n})))
+	}
+	// A leaves: B and C keep their positions 1 and 2.
+	if err := adm.MoveTask(ids[0], cols[1].ID, 0); err != nil {
+		t.Fatal(err)
+	}
+	// Dropping A before C (the drag passes C's Pos) must give B, A, C.
+	c := must(adm.Task(ids[2]))
+	if err := adm.MoveTask(ids[0], cols[0].ID, c.Task.Pos); err != nil {
+		t.Fatal(err)
+	}
+	var got string
+	for _, x := range must(adm.BoardView(board, AnyFilter())).Tasks {
+		if x.ColumnID == cols[0].ID {
+			got += x.Title
+		}
+	}
+	if got != "BAC" {
+		t.Fatalf("order %q", got)
+	}
+}
