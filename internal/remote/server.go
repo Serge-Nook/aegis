@@ -22,8 +22,10 @@ import (
 const (
 	DefaultPort   = 8080
 	DiscoveryPort = 8089
-	maxBody       = 64 << 20
+	maxBody       = 256 << 20
 	tokenTTL      = 30 * 24 * time.Hour
+	maxFails      = 5
+	lockTime      = time.Minute
 )
 
 type Info struct {
@@ -52,7 +54,13 @@ type errorReply struct {
 
 type token struct {
 	uid  int64
-	seen time.Time
+	seen  time.Time
+	stamp string
+}
+
+type attempts struct {
+	n     int
+	until time.Time
 }
 
 type Server struct {
@@ -61,11 +69,12 @@ type Server struct {
 	version string
 	mu      sync.Mutex
 	tokens  map[string]*token
+	fails   map[string]*attempts
 	api     reflect.Type
 }
 
 func NewServer(svc *core.Service, name, version string) *Server {
-	return &Server{svc: svc, name: name, version: version, tokens: map[string]*token{}, api: reflect.TypeOf((*core.API)(nil)).Elem()}
+	return &Server{svc: svc, name: name, version: version, tokens: map[string]*token{}, fails: map[string]*attempts{}, api: reflect.TypeOf((*core.API)(nil)).Elem()}
 }
 
 func (s *Server) Handler() http.Handler {
@@ -156,7 +165,14 @@ func decode(r *http.Request, v any) error {
 	return nil
 }
 
+// setup is allowed only from the host itself: otherwise anyone on the network
+// could claim the administrator account of a fresh database.
 func (s *Server) setup(w http.ResponseWriter, r *http.Request) {
+	host, _, _ := net.SplitHostPort(r.RemoteAddr)
+	if ip := net.ParseIP(host); ip == nil || !ip.IsLoopback() {
+		writeErr(w, core.ErrForbidden)
+		return
+	}
 	var c Credentials
 	if err := decode(r, &c); err != nil {
 		writeErr(w, err)
@@ -175,7 +191,27 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, err)
 		return
 	}
+	key := strings.ToLower(strings.TrimSpace(c.Login))
+	s.mu.Lock()
+	a := s.fails[key]
+	locked := a != nil && time.Now().Before(a.until)
+	s.mu.Unlock()
+	if locked {
+		writeErr(w, &core.Error{Code: core.CodeAuth, Msg: "too many attempts"})
+		return
+	}
 	ss, err := s.svc.Login(c.Login, c.Password)
+	if err != nil {
+		if core.CodeOf(err) == core.CodeAuth {
+			s.loginFailed(key)
+		}
+		writeErr(w, err)
+		return
+	}
+	s.mu.Lock()
+	delete(s.fails, key)
+	s.mu.Unlock()
+	stamp, err := s.svc.AuthStamp(ss.UserID())
 	if err != nil {
 		writeErr(w, err)
 		return
@@ -195,7 +231,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 			delete(s.tokens, k)
 		}
 	}
-	s.tokens[tk] = &token{uid: ss.UserID(), seen: now}
+	s.tokens[tk] = &token{uid: ss.UserID(), seen: now, stamp: stamp}
 	s.mu.Unlock()
 	writeJSON(w, 200, LoginReply{Token: tk, User: *u})
 }
@@ -211,15 +247,58 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, struct{}{})
 }
 
-func (s *Server) session(r *http.Request) *core.Session {
+// loginFailed locks a login for lockTime after maxFails wrong passwords in a row.
+func (s *Server) loginFailed(key string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	t := s.tokens[bearer(r)]
+	a := s.fails[key]
+	if a == nil {
+		if len(s.fails) > 10000 {
+			clear(s.fails)
+		}
+		a = &attempts{}
+		s.fails[key] = a
+	}
+	a.n++
+	if a.n >= maxFails {
+		a.n = 0
+		a.until = time.Now().Add(lockTime)
+	}
+}
+
+// session resolves the bearer token. A token stops working once its user's
+// credentials change (password change or reset, deactivation, restore).
+func (s *Server) session(r *http.Request) *core.Session {
+	tk := bearer(r)
+	s.mu.Lock()
+	t := s.tokens[tk]
 	if t == nil || time.Since(t.seen) > tokenTTL {
+		s.mu.Unlock()
 		return nil
 	}
 	t.seen = time.Now()
-	return s.svc.SessionFor(t.uid)
+	uid, stamp := t.uid, t.stamp
+	s.mu.Unlock()
+	if st, err := s.svc.AuthStamp(uid); err != nil || st != stamp {
+		s.mu.Lock()
+		delete(s.tokens, tk)
+		s.mu.Unlock()
+		return nil
+	}
+	return s.svc.SessionFor(uid)
+}
+
+// restamp keeps the caller's own token valid after he changed his password.
+func (s *Server) restamp(r *http.Request, uid int64) {
+	st, err := s.svc.AuthStamp(uid)
+	if err != nil {
+		return
+	}
+	s.mu.Lock()
+	if t := s.tokens[bearer(r)]; t != nil && t.uid == uid {
+		t.stamp = st
+	}
+	s.mu.Unlock()
 }
 
 var errType = reflect.TypeOf((*error)(nil)).Elem()
@@ -259,6 +338,9 @@ func (s *Server) call(w http.ResponseWriter, r *http.Request) {
 	if e := out[len(out)-1]; mt.Out(len(out)-1) == errType && !e.IsNil() {
 		writeErr(w, e.Interface().(error))
 		return
+	}
+	if name == "ChangePassword" || name == "SaveUser" {
+		s.restamp(r, ss.UserID())
 	}
 	var res any
 	if len(out) == 2 {

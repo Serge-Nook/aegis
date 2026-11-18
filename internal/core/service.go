@@ -75,6 +75,20 @@ func (s *Service) Login(login, password string) (*Session, error) {
 	return &Session{s: s, uid: id}, nil
 }
 
+// AuthStamp identifies the state of a user's credentials: it changes when the
+// password is changed or reset, the user is disabled or the user table is restored.
+func (s *Service) AuthStamp(uid int64) (string, error) {
+	var login, hash string
+	var active int
+	if err := s.dbx().row("SELECT login, pass_hash, active FROM users WHERE id = ?", uid).Scan(&login, &hash, &active); err != nil {
+		return "", notFound(err)
+	}
+	if active == 0 {
+		return "", ErrAuth
+	}
+	return login + "\x1f" + hash, nil
+}
+
 // SessionFor opens a session without a password (server side, after a token check).
 func (s *Service) SessionFor(uid int64) *Session { return &Session{s: s, uid: uid} }
 
